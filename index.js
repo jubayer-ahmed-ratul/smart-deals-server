@@ -28,10 +28,31 @@ async function run() {
 
     const db = client.db("smart_db");
     const productsCollection = db.collection("products");
+    const bidsCollection = db.collection("bids");
+    const usersCollection = db.collection("users");
+
+    app.post("/users", async (req, res) => {
+      const newUser = req.body;
+      const result = await usersCollection.insertOne(newUser);
+      res.send(result);
+    });
+
+    //////////////////////////
+    // products related apis
+    /////////////////////////
 
     app.get("/products", async (req, res) => {
       try {
-        const cursor = productsCollection.find();
+        // const projectFields={title:1}
+        // const cursor = productsCollection.find().sort({price_min:1}).skip(2).limit(5).project(projectFields);
+        console.log(req.query);
+        const email = req.query.email;
+        const query = {};
+        if (email) {
+          query.email = email;
+        }
+
+        const cursor = productsCollection.find(query);
         const result = await cursor.toArray();
         res.send(result);
       } catch (err) {
@@ -39,12 +60,18 @@ async function run() {
         res.status(500).send("Failed to fetch products");
       }
     });
+
+    //latest products api
+    app.get("/latest-products", async (req, res) => {
+      const cursor = productsCollection.find().sort({created_at:-1}).limit(6);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     app.get("/products/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const product = await productsCollection.findOne(query);
-
-     
 
       res.send(product);
     });
@@ -80,6 +107,71 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await productsCollection.deleteOne(query);
+      res.send(result);
+    });
+
+     //bid by product
+  app.get('/products/bids/:productId',async(req,res)=>{
+    const productId=req.params.productId;
+    const query={product:productId}
+    const cursor=bidsCollection.find(query).sort({bid_price:-1})
+    const result=await cursor.toArray();
+    res.send(result)
+    
+  })
+
+    //////////////////////////
+    // bids related apis
+    /////////////////////////
+
+    //GET a bid or all bid
+    app.get("/bids", async (req, res) => {
+      const bidder_email = req.query.bidder_email; // read query param
+      const query = {};
+
+      if (bidder_email) {
+        query.bidder_email = bidder_email; // match your DB field
+      }
+
+      const cursor = bidsCollection.find(query); // pass the query object
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+    // POST a new bid
+    app.post("/bids", async (req, res) => {
+      try {
+        const newBid = req.body;
+        const result = await bidsCollection.insertOne(newBid);
+        res.send(result);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send("Failed to insert bid");
+      }
+    });
+
+ 
+
+    // PATCH (update) a bid
+    app.patch("/bids/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedBid = req.body;
+      const query = { _id: new ObjectId(id) };
+      const update = {
+        $set: {
+          bid_price: updatedBid.bid_price,
+          status: updatedBid.status,
+        },
+      };
+
+      const result = await bidsCollection.updateOne(query, update);
+      res.send(result);
+    });
+
+    // DELETE a bid
+    app.delete("/bids/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bidsCollection.deleteOne(query);
       res.send(result);
     });
 
