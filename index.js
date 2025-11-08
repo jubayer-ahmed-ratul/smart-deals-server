@@ -63,7 +63,10 @@ async function run() {
 
     //latest products api
     app.get("/latest-products", async (req, res) => {
-      const cursor = productsCollection.find().sort({created_at:-1}).limit(6);
+      const cursor = productsCollection
+        .find()
+        .sort({ created_at: -1 })
+        .limit(6);
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -110,15 +113,26 @@ async function run() {
       res.send(result);
     });
 
-     //bid by product
-  app.get('/products/bids/:productId',async(req,res)=>{
-    const productId=req.params.productId;
-    const query={product:productId}
-    const cursor=bidsCollection.find(query).sort({bid_price:-1})
-    const result=await cursor.toArray();
-    res.send(result)
-    
-  })
+    //bid by product
+    app.get("/products/bids/:productId", async (req, res) => {
+      const productId = req.params.productId;
+      const query = { product: productId };
+      const cursor = bidsCollection.find(query).sort({ bid_price: -1 });
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    //bid by user
+    app.get('/bids',async(req,res)=>{
+      const query={};
+      if(query.email){
+        query.buyer_email=email;
+      }
+      const cursor=bidsCollection.find(query);
+      const result=await cursor.toArray();
+      res.send(result)
+    })
+
 
     //////////////////////////
     // bids related apis
@@ -148,8 +162,6 @@ async function run() {
         res.status(500).send("Failed to insert bid");
       }
     });
-
- 
 
     // PATCH (update) a bid
     app.patch("/bids/:id", async (req, res) => {
